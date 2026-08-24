@@ -60,6 +60,18 @@ func validationFields(err error) map[string]string {
 // Memory handlers
 // ---------------------------------------------------------------------------
 
+// @Summary      Create a memory
+// @Description  Encodes and stores a new memory; provenance is server-stamped from the authenticated principal (F21)
+// @Tags         memories
+// @Accept       json
+// @Produce      json
+// @Param        body body CreateMemoryRequest true "Memory to save"
+// @Success      201 {object} domain.Memory
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      401 {object} ErrorEnvelope
+// @Failure      500 {object} ErrorEnvelope
+// @Router       /memories [post]
+// @Security     ApiKeyAuth
 // CreateMemory handles POST /api/v1/memories.
 func (h *Handlers) CreateMemory(w http.ResponseWriter, r *http.Request) {
 	var req CreateMemoryRequest
@@ -127,6 +139,16 @@ func (h *Handlers) CreateMemory(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, saved)
 }
 
+// @Summary      Get a memory by id
+// @Description  Fetch a single memory including its current version and supersession state
+// @Tags         memories
+// @Produce      json
+// @Param        id path string true "Memory UUID"
+// @Success      200 {object} domain.Memory
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      404 {object} ErrorEnvelope
+// @Router       /memories/{id} [get]
+// @Security     ApiKeyAuth
 // GetMemory handles GET /api/v1/memories/{id}.
 func (h *Handlers) GetMemory(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathUUID(w, r, "id")
@@ -141,6 +163,22 @@ func (h *Handlers) GetMemory(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, m)
 }
 
+// @Summary      List memories
+// @Description  Cursor-paginated memory listing with type, text, tag, and temporal-validity filters
+// @Tags         memories
+// @Produce      json
+// @Param        type query string false "Comma-separated types: episodic|semantic|procedural"
+// @Param        q query string false "Full-text query"
+// @Param        tags query string false "Comma-separated tags"
+// @Param        tags_match query string false "any|all (default any)"
+// @Param        valid_at query string false "RFC3339 instant for temporal validity"
+// @Param        limit query int false "Page size (default 50, max 200)"
+// @Param        cursor query string false "Pagination cursor"
+// @Success      200 {object} PageResponse
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      401 {object} ErrorEnvelope
+// @Router       /memories [get]
+// @Security     ApiKeyAuth
 // ListMemories handles GET /api/v1/memories.
 func (h *Handlers) ListMemories(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
@@ -192,6 +230,19 @@ func (h *Handlers) ListMemories(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, PageResponse{Items: items, NextCursor: page.NextCursor, HasMore: page.HasMore, TotalEstimate: nil})
 }
 
+// @Summary      Update a memory
+// @Description  Partial update with optimistic concurrency via expected_version
+// @Tags         memories
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "Memory UUID"
+// @Param        body body UpdateMemoryRequest true "Memory update"
+// @Success      200 {object} domain.Memory
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      404 {object} ErrorEnvelope
+// @Failure      409 {object} ErrorEnvelope
+// @Router       /memories/{id} [put]
+// @Security     ApiKeyAuth
 // UpdateMemory handles PUT /api/v1/memories/{id}.
 func (h *Handlers) UpdateMemory(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathUUID(w, r, "id")
@@ -241,6 +292,17 @@ func (h *Handlers) UpdateMemory(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, updated)
 }
 
+// @Summary      Delete (expire) a memory
+// @Description  Soft-expire a memory; mode=purge is rejected without admin scope
+// @Tags         memories
+// @Param        id path string true "Memory UUID"
+// @Param        mode query string false "Delete mode (purge forbidden in v1)"
+// @Success      204 "No content"
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      403 {object} ErrorEnvelope
+// @Failure      404 {object} ErrorEnvelope
+// @Router       /memories/{id} [delete]
+// @Security     ApiKeyAuth
 // DeleteMemory handles DELETE /api/v1/memories/{id} (expire by default).
 func (h *Handlers) DeleteMemory(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathUUID(w, r, "id")
@@ -258,6 +320,19 @@ func (h *Handlers) DeleteMemory(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// @Summary      Link two memories
+// @Description  Create a directed weighted edge between memories (self-links rejected)
+// @Tags         memories
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "Source memory UUID"
+// @Param        body body CreateLinkRequest true "Link definition"
+// @Success      201 {object} domain.MemoryLink
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      404 {object} ErrorEnvelope
+// @Failure      409 {object} ErrorEnvelope
+// @Router       /memories/{id}/links [post]
+// @Security     ApiKeyAuth
 // CreateLink handles POST /api/v1/memories/{id}/links.
 func (h *Handlers) CreateLink(w http.ResponseWriter, r *http.Request) {
 	sourceID, ok := pathUUID(w, r, "id")
@@ -298,6 +373,18 @@ func (h *Handlers) CreateLink(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, link)
 }
 
+// @Summary      List a memory's links
+// @Description  Outgoing/incoming edges for a memory
+// @Tags         memories
+// @Produce      json
+// @Param        id path string true "Memory UUID"
+// @Param        direction query string false "outgoing|incoming|both (default both)"
+// @Param        limit query int false "Max links"
+// @Success      200 {object} PageResponse
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      404 {object} ErrorEnvelope
+// @Router       /memories/{id}/links [get]
+// @Security     ApiKeyAuth
 // GetLinks handles GET /api/v1/memories/{id}/links.
 func (h *Handlers) GetLinks(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathUUID(w, r, "id")
@@ -332,7 +419,20 @@ func parseRelationship(raw string) (domain.RelationshipType, error) {
 // Recall handlers
 // ---------------------------------------------------------------------------
 
-// Recall handles POST /api/v1/recall.
+// @Summary      Submit a recall request
+// @Description  Run 4-way hybrid retrieval; sync returns 200 with results, async returns 202 with a poll pointer
+// @Tags         recall
+// @Accept       json
+// @Produce      json
+// @Param        body body RecallRequestDTO true "Recall request"
+// @Success      200 {object} RecallSyncResponse
+// @Success      202 {object} RecallAsyncResponse
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      401 {object} ErrorEnvelope
+// @Failure      500 {object} ErrorEnvelope
+// @Router       /recall [post]
+// @Security     ApiKeyAuth
+// RecallSubmit handles POST /api/v1/recall.
 func (h *Handlers) RecallSubmit(w http.ResponseWriter, r *http.Request) {
 	var req RecallRequestDTO
 	if !decodeJSON(w, r, &req) {
@@ -408,6 +508,16 @@ func (h *Handlers) RecallSubmit(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, RecallSyncResponse{Request: rr, Result: result})
 }
 
+// @Summary      Get recall request status
+// @Description  Poll an async recall request by id
+// @Tags         recall
+// @Produce      json
+// @Param        request_id path string true "Recall request UUID"
+// @Success      200 {object} RecallStatusResponse
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      404 {object} ErrorEnvelope
+// @Router       /recall/{request_id} [get]
+// @Security     ApiKeyAuth
 // GetRecallStatus handles GET /api/v1/recall/{request_id}.
 func (h *Handlers) GetRecallStatus(w http.ResponseWriter, r *http.Request) {
 	requestID, ok := pathUUID(w, r, "request_id")
@@ -434,6 +544,18 @@ func (h *Handlers) GetRecallStatus(w http.ResponseWriter, r *http.Request) {
 // Session handlers
 // ---------------------------------------------------------------------------
 
+// @Summary      Start an agent session
+// @Description  Create a session with context-window budget; optionally bootstraps a memory injection plan
+// @Tags         sessions
+// @Accept       json
+// @Produce      json
+// @Param        body body CreateSessionRequest true "Session input"
+// @Success      201 {object} CreateSessionResponse
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      401 {object} ErrorEnvelope
+// @Failure      409 {object} ErrorEnvelope
+// @Router       /sessions [post]
+// @Security     ApiKeyAuth
 // CreateSession handles POST /api/v1/sessions.
 func (h *Handlers) CreateSession(w http.ResponseWriter, r *http.Request) {
 	var req CreateSessionRequest
@@ -465,6 +587,16 @@ func (h *Handlers) CreateSession(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, CreateSessionResponse{Session: created, BootstrapPlan: planDTO})
 }
 
+// @Summary      Get a session
+// @Description  Fetch a session with remaining token/slot usage
+// @Tags         sessions
+// @Produce      json
+// @Param        session_id path string true "Session UUID"
+// @Success      200 {object} GetSessionResponse
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      404 {object} ErrorEnvelope
+// @Router       /sessions/{session_id} [get]
+// @Security     ApiKeyAuth
 // GetSession handles GET /api/v1/sessions/{session_id}.
 func (h *Handlers) GetSession(w http.ResponseWriter, r *http.Request) {
 	sessionID, ok := pathUUID(w, r, "session_id")
@@ -486,6 +618,19 @@ func (h *Handlers) GetSession(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// @Summary      Activate a memory in a session
+// @Description  Pin a memory into the session's active context window
+// @Tags         sessions
+// @Accept       json
+// @Produce      json
+// @Param        session_id path string true "Session UUID"
+// @Param        body body ActivateMemoryRequest true "Memory activation"
+// @Success      200 {object} ActivateMemoryResponse
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      404 {object} ErrorEnvelope
+// @Failure      409 {object} ErrorEnvelope
+// @Router       /sessions/{session_id}/memories [post]
+// @Security     ApiKeyAuth
 // ActivateMemory handles POST /api/v1/sessions/{session_id}/memories.
 func (h *Handlers) ActivateMemory(w http.ResponseWriter, r *http.Request) {
 	sessionID, ok := pathUUID(w, r, "session_id")
@@ -512,6 +657,16 @@ func (h *Handlers) ActivateMemory(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, ActivateMemoryResponse{Session: s, Injection: inj})
 }
 
+// @Summary      Deactivate a memory
+// @Description  Unpin a memory from the session's active context
+// @Tags         sessions
+// @Param        session_id path string true "Session UUID"
+// @Param        memory_id path string true "Memory UUID"
+// @Success      204 "No content"
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      404 {object} ErrorEnvelope
+// @Router       /sessions/{session_id}/memories/{memory_id} [delete]
+// @Security     ApiKeyAuth
 // DeactivateMemory handles DELETE /api/v1/sessions/{session_id}/memories/{memory_id}.
 func (h *Handlers) DeactivateMemory(w http.ResponseWriter, r *http.Request) {
 	sessionID, ok := pathUUID(w, r, "session_id")
@@ -529,6 +684,18 @@ func (h *Handlers) DeactivateMemory(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// @Summary      End a session
+// @Description  Close a session; optionally triggers a consolidation job (202)
+// @Tags         sessions
+// @Accept       json
+// @Produce      json
+// @Param        session_id path string true "Session UUID"
+// @Param        body body EndSessionRequest false "Summary and consolidate flag"
+// @Success      202 {object} EndSessionResponse
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      404 {object} ErrorEnvelope
+// @Router       /sessions/{session_id}/end [post]
+// @Security     ApiKeyAuth
 // EndSession handles POST /api/v1/sessions/{session_id}/end.
 func (h *Handlers) EndSession(w http.ResponseWriter, r *http.Request) {
 	sessionID, ok := pathUUID(w, r, "session_id")
@@ -557,6 +724,18 @@ func (h *Handlers) EndSession(w http.ResponseWriter, r *http.Request) {
 // Space handlers
 // ---------------------------------------------------------------------------
 
+// @Summary      Create a shared memory space
+// @Description  Create a SharedMemorySpace with participants, access policy, storage backend, retention
+// @Tags         spaces
+// @Accept       json
+// @Produce      json
+// @Param        body body CreateSpaceRequest true "Space input"
+// @Success      201 {object} domain.SharedMemorySpace
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      401 {object} ErrorEnvelope
+// @Failure      409 {object} ErrorEnvelope
+// @Router       /spaces [post]
+// @Security     ApiKeyAuth
 // CreateSpace handles POST /api/v1/spaces.
 func (h *Handlers) CreateSpace(w http.ResponseWriter, r *http.Request) {
 	var req CreateSpaceRequest
@@ -598,6 +777,14 @@ func (h *Handlers) CreateSpace(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, created)
 }
 
+// @Summary      List visible spaces
+// @Description  Spaces visible to the authenticated principal
+// @Tags         spaces
+// @Produce      json
+// @Success      200 {object} PageResponse
+// @Failure      401 {object} ErrorEnvelope
+// @Router       /spaces [get]
+// @Security     ApiKeyAuth
 // ListSpaces handles GET /api/v1/spaces.
 func (h *Handlers) ListSpaces(w http.ResponseWriter, r *http.Request) {
 	principal, _ := PrincipalFromContext(r.Context())
@@ -617,6 +804,16 @@ func (h *Handlers) ListSpaces(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, PageResponse{Items: items, NextCursor: "", HasMore: false, TotalEstimate: nil})
 }
 
+// @Summary      Get a space
+// @Description  Fetch a SharedMemorySpace by id
+// @Tags         spaces
+// @Produce      json
+// @Param        space_id path string true "Space UUID"
+// @Success      200 {object} domain.SharedMemorySpace
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      404 {object} ErrorEnvelope
+// @Router       /spaces/{space_id} [get]
+// @Security     ApiKeyAuth
 // GetSpace handles GET /api/v1/spaces/{space_id}.
 func (h *Handlers) GetSpace(w http.ResponseWriter, r *http.Request) {
 	spaceID, ok := pathUUID(w, r, "space_id")
@@ -631,6 +828,18 @@ func (h *Handlers) GetSpace(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, s)
 }
 
+// @Summary      Update a space
+// @Description  Update description, access policy, retention, participants
+// @Tags         spaces
+// @Accept       json
+// @Produce      json
+// @Param        space_id path string true "Space UUID"
+// @Param        body body UpdateSpaceRequest true "Space update"
+// @Success      200 {object} domain.SharedMemorySpace
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      404 {object} ErrorEnvelope
+// @Router       /spaces/{space_id} [put]
+// @Security     ApiKeyAuth
 // UpdateSpace handles PUT /api/v1/spaces/{space_id}.
 func (h *Handlers) UpdateSpace(w http.ResponseWriter, r *http.Request) {
 	spaceID, ok := pathUUID(w, r, "space_id")
@@ -674,6 +883,19 @@ func (h *Handlers) UpdateSpace(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, updated)
 }
 
+// @Summary      Propose a memory promotion
+// @Description  Propose promoting an individual memory into a shared space; diff is synthesized server-side
+// @Tags         spaces
+// @Accept       json
+// @Produce      json
+// @Param        space_id path string true "Space UUID"
+// @Param        body body PromoteMemoryRequest true "Promotion input"
+// @Success      201 {object} domain.PromotionProposal
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      404 {object} ErrorEnvelope
+// @Failure      409 {object} ErrorEnvelope
+// @Router       /spaces/{space_id}/memories [post]
+// @Security     ApiKeyAuth
 // PromoteMemory handles POST /api/v1/spaces/{space_id}/memories.
 func (h *Handlers) PromoteMemory(w http.ResponseWriter, r *http.Request) {
 	spaceID, ok := pathUUID(w, r, "space_id")
@@ -723,6 +945,17 @@ func (h *Handlers) PromoteMemory(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, created)
 }
 
+// @Summary      List promotion proposals
+// @Description  Proposals for a space, optionally filtered by status
+// @Tags         spaces
+// @Produce      json
+// @Param        space_id path string true "Space UUID"
+// @Param        status query string false "draft|in_review|merged|rejected"
+// @Success      200 {object} PageResponse
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      404 {object} ErrorEnvelope
+// @Router       /spaces/{space_id}/proposals [get]
+// @Security     ApiKeyAuth
 // ListProposals handles GET /api/v1/spaces/{space_id}/proposals.
 func (h *Handlers) ListProposals(w http.ResponseWriter, r *http.Request) {
 	spaceID, ok := pathUUID(w, r, "space_id")
@@ -750,11 +983,39 @@ func (h *Handlers) ListProposals(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, PageResponse{Items: items, NextCursor: "", HasMore: false, TotalEstimate: nil})
 }
 
+// @Summary      Approve a proposal
+// @Description  Approve a promotion proposal, merging it into the space
+// @Tags         spaces
+// @Accept       json
+// @Produce      json
+// @Param        space_id path string true "Space UUID"
+// @Param        proposal_id path string true "Proposal UUID"
+// @Param        body body ReviewProposalRequest false "Reviewer identity and note"
+// @Success      200 {object} domain.PromotionProposal
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      404 {object} ErrorEnvelope
+// @Failure      409 {object} ErrorEnvelope
+// @Router       /spaces/{space_id}/proposals/{proposal_id}/approve [post]
+// @Security     ApiKeyAuth
 // ApproveProposal handles POST /api/v1/spaces/{space_id}/proposals/{proposal_id}/approve.
 func (h *Handlers) ApproveProposal(w http.ResponseWriter, r *http.Request) {
 	h.reviewProposal(w, r, true)
 }
 
+// @Summary      Reject a proposal
+// @Description  Reject a promotion proposal with an optional reason
+// @Tags         spaces
+// @Accept       json
+// @Produce      json
+// @Param        space_id path string true "Space UUID"
+// @Param        proposal_id path string true "Proposal UUID"
+// @Param        body body ReviewProposalRequest false "Reviewer identity and reason"
+// @Success      200 {object} domain.PromotionProposal
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      404 {object} ErrorEnvelope
+// @Failure      409 {object} ErrorEnvelope
+// @Router       /spaces/{space_id}/proposals/{proposal_id}/reject [post]
+// @Security     ApiKeyAuth
 // RejectProposal handles POST /api/v1/spaces/{space_id}/proposals/{proposal_id}/reject.
 func (h *Handlers) RejectProposal(w http.ResponseWriter, r *http.Request) {
 	h.reviewProposal(w, r, false)
@@ -799,6 +1060,18 @@ func (h *Handlers) reviewProposal(w http.ResponseWriter, r *http.Request, approv
 	writeJSON(w, http.StatusOK, proposal)
 }
 
+// @Summary      Sync a space
+// @Description  Trigger an async space sync job (202 with poll pointer)
+// @Tags         spaces
+// @Accept       json
+// @Produce      json
+// @Param        space_id path string true "Space UUID"
+// @Param        body body SyncSpaceRequest false "Sync direction: pull|push|both"
+// @Success      202 {object} SyncSpaceResponse
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      404 {object} ErrorEnvelope
+// @Router       /spaces/{space_id}/sync [post]
+// @Security     ApiKeyAuth
 // SyncSpace handles POST /api/v1/spaces/{space_id}/sync.
 func (h *Handlers) SyncSpace(w http.ResponseWriter, r *http.Request) {
 	spaceID, ok := pathUUID(w, r, "space_id")
@@ -826,11 +1099,33 @@ func (h *Handlers) SyncSpace(w http.ResponseWriter, r *http.Request) {
 // Lifecycle handlers
 // ---------------------------------------------------------------------------
 
+// @Summary      Trigger consolidation
+// @Description  Kick off a lifecycle consolidation job over a scope (202 with poll pointer)
+// @Tags         lifecycle
+// @Accept       json
+// @Produce      json
+// @Param        body body ConsolidateRequest true "Consolidation input"
+// @Success      202 {object} JobResponse
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      401 {object} ErrorEnvelope
+// @Router       /lifecycle/consolidate [post]
+// @Security     ApiKeyAuth
 // Consolidate handles POST /api/v1/lifecycle/consolidate.
 func (h *Handlers) Consolidate(w http.ResponseWriter, r *http.Request) {
 	h.lifecycleJob(w, r, h.Lifecycle.Consolidate)
 }
 
+// @Summary      Trigger decay
+// @Description  Kick off a lifecycle decay job over a scope (202 with poll pointer)
+// @Tags         lifecycle
+// @Accept       json
+// @Produce      json
+// @Param        body body DecayRequest true "Decay input"
+// @Success      202 {object} JobResponse
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      401 {object} ErrorEnvelope
+// @Router       /lifecycle/decay [post]
+// @Security     ApiKeyAuth
 // Decay handles POST /api/v1/lifecycle/decay.
 func (h *Handlers) Decay(w http.ResponseWriter, r *http.Request) {
 	h.lifecycleJob(w, r, h.Lifecycle.Decay)
@@ -859,6 +1154,16 @@ func (h *Handlers) lifecycleJob(w http.ResponseWriter, r *http.Request, fn func(
 	}})
 }
 
+// @Summary      Get a lifecycle job
+// @Description  Poll a consolidation/decay/sync job by id
+// @Tags         lifecycle
+// @Produce      json
+// @Param        job_id path string true "Job UUID"
+// @Success      200 {object} domain.LifecycleJob
+// @Failure      400 {object} ErrorEnvelope
+// @Failure      404 {object} ErrorEnvelope
+// @Router       /lifecycle/jobs/{job_id} [get]
+// @Security     ApiKeyAuth
 // GetJob handles GET /api/v1/lifecycle/jobs/{job_id}.
 func (h *Handlers) GetJob(w http.ResponseWriter, r *http.Request) {
 	jobID, ok := pathUUID(w, r, "job_id")
@@ -873,6 +1178,15 @@ func (h *Handlers) GetJob(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, job)
 }
 
+// @Summary      Memory statistics
+// @Description  Aggregated stats for a scope (default global)
+// @Tags         lifecycle
+// @Produce      json
+// @Param        scope query string false "session|user|space|all (default global)"
+// @Success      200 {object} object
+// @Failure      400 {object} ErrorEnvelope
+// @Router       /lifecycle/stats [get]
+// @Security     ApiKeyAuth
 // GetStats handles GET /api/v1/lifecycle/stats.
 func (h *Handlers) GetStats(w http.ResponseWriter, r *http.Request) {
 	scope := r.URL.Query().Get("scope")

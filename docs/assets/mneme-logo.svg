@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="mneme logo">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="32%" r="85%">
+      <stop offset="0%" stop-color="#4338ca"/>
+      <stop offset="55%" stop-color="#312e81"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
+    </radialGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e0e7ff"/>
+      <stop offset="100%" stop-color="#818cf8"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#67e8f9"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="nodeIndigo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a5b4fc"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="nodeCyan" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a5f3fc"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="layer" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#818cf8"/>
+      <stop offset="55%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- background -->
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+  <rect x="1" y="1" width="254" height="254" rx="55" fill="none" stroke="#818cf8" stroke-opacity="0.35" stroke-width="2"/>
+
+  <!-- circuit traces -->
+  <g stroke="#22d3ee" stroke-opacity="0.35" stroke-width="2.5" fill="none" stroke-linecap="round">
+    <path d="M22 92 V60 Q22 50 32 50 H56"/>
+    <path d="M234 164 V196 Q234 206 224 206 H200"/>
+  </g>
+  <g fill="#67e8f9" fill-opacity="0.6">
+    <circle cx="22" cy="92" r="3"/>
+    <circle cx="56" cy="50" r="3"/>
+    <circle cx="234" cy="164" r="3"/>
+    <circle cx="200" cy="206" r="3"/>
+  </g>
+
+  <!-- memory storage layers -->
+  <g>
+    <rect x="64" y="176" width="128" height="18" rx="9" fill="url(#layer)" opacity="0.95"/>
+    <rect x="78" y="199" width="100" height="15" rx="7.5" fill="url(#layer)" opacity="0.7"/>
+    <rect x="92" y="220" width="72" height="13" rx="6.5" fill="url(#layer)" opacity="0.45"/>
+  </g>
+
+  <!-- recall arrow: neural core into memory stack -->
+  <g filter="url(#glow)">
+    <path d="M128 150 V160" stroke="url(#accent)" stroke-width="3" stroke-linecap="round"/>
+    <polygon points="128,173 121.5,161 134.5,161" fill="url(#accent)"/>
+  </g>
+
+  <!-- neural M -->
+  <g filter="url(#glow)">
+    <path d="M62 166 V82 L128 138 L194 82 V166" fill="none" stroke="url(#edge)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M62 124 L92 107" stroke="url(#accent)" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+    <path d="M194 124 L164 107" stroke="url(#accent)" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+    <path d="M62 82 L86 58" stroke="url(#accent)" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+    <path d="M194 82 L170 58" stroke="url(#accent)" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+  </g>
+
+  <!-- synapse nodes -->
+  <g filter="url(#glow)">
+    <circle cx="62" cy="166" r="8" fill="url(#nodeIndigo)"/>
+    <circle cx="194" cy="166" r="8" fill="url(#nodeIndigo)"/>
+    <circle cx="62" cy="82" r="9" fill="url(#nodeCyan)"/>
+    <circle cx="194" cy="82" r="9" fill="url(#nodeCyan)"/>
+    <circle cx="128" cy="138" r="9" fill="url(#nodeIndigo)"/>
+    <circle cx="95" cy="110" r="4.5" fill="url(#nodeCyan)" opacity="0.9"/>
+    <circle cx="161" cy="110" r="4.5" fill="url(#nodeCyan)" opacity="0.9"/>
+    <circle cx="86" cy="58" r="3.5" fill="url(#nodeCyan)" opacity="0.85"/>
+    <circle cx="170" cy="58" r="3.5" fill="url(#nodeCyan)" opacity="0.85"/>
+  </g>
+  <g fill="#e0e7ff" opacity="0.55">
+    <circle cx="60" cy="80" r="2"/>
+    <circle cx="192" cy="80" r="2"/>
+    <circle cx="126" cy="136" r="2"/>
+    <circle cx="60" cy="164" r="1.8"/>
+    <circle cx="192" cy="164" r="1.8"/>
+  </g>
+
+  <!-- ambient sparkles -->
+  <g fill="#67e8f9">
+    <circle cx="40" cy="148" r="2" opacity="0.5"/>
+    <circle cx="216" cy="142" r="2" opacity="0.5"/>
+    <circle cx="104" cy="62" r="1.8" opacity="0.4"/>
+    <circle cx="152" cy="62" r="1.8" opacity="0.4"/>
+  </g>
+</svg>
