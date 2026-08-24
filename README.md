@@ -18,6 +18,17 @@
 
 </div>
 
+📖 **Full documentation**: [https://phanijapps.github.io/mneme/](https://phanijapps.github.io/mneme/)
+
+---
+
+## Documentation
+
+Full architecture docs, data models, API contracts, and slide deck are hosted at:
+**[https://phanijapps.github.io/mneme/](https://phanijapps.github.io/mneme/)**
+
+Local copies are in the `docs/` directory.
+
 ---
 
 ## 🧠 AI Agent Memory & Recall System
