@@ -1,10 +1,10 @@
 > 🌐 **GitHub**: https://github.com/phanijapps/mneme · **Website**: https://phanijapps.github.io/mneme
 
 <p align="center">
-  <img src="docs/assets/mneme-logo.svg" width="96" alt="mneme logo" />
-  &nbsp;&nbsp;&nbsp;
-  <span style="font-size: 42px; font-weight: bold;">mneme</span>
+  <img src="docs/assets/mneme-logo.svg" width="120" alt="mneme logo" />
 </p>
+
+<h1 align="center">mneme</h1>
 
 <!-- Badges -->
 <div align="center">
