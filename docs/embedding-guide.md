@@ -19,6 +19,7 @@ service.MemoryService
 port.MemoryEncoder            ← the seam
         │
         ├── adapter/encoder/bge      → Ollama /api/embed (default)
+        ├── adapter/encoder/hf       → ONNX Runtime, local (in-process)
         ├── adapter/encoder/stub     → deterministic, offline (tests)
         └── adapter/encoder/<yours>  → any provider you add
         │
@@ -384,6 +385,76 @@ func (e *Encoder) embed(ctx context.Context, texts []string) ([][]float64, error
 
 ---
 
+### f) Hugging Face — ONNX Runtime (local, no Python)
+
+Runs any Hugging Face sentence-transformers model **directly in the Go
+process** via ONNX Runtime — no Ollama, no Python, no sidecar process. The
+adapter ships a built-in BERT-style WordPiece tokenizer, mean-pools the
+`last_hidden_state` output, and L2-normalizes (the sentence-transformers
+pooling recipe).
+
+| | |
+|---|---|
+| **Models** | any sentence-transformers model exported to ONNX |
+| **Go module** | `github.com/yalue/onnxruntime_go` (CGo to the ORT shared lib) |
+| **Cost** | free — runs on your hardware |
+| **When** | want HF model variety fully in-process, no external services |
+
+**Setup** — get ONNX model files into a local directory (needs
+`model.onnx` + `vocab.txt`; `config.json`/`tokenizer_config.json` are read
+for max sequence length when present):
+
+```bash
+# Option A: export with optimum
+pip install optimum[exporters]
+optimum-cli export --model sentence-transformers/all-MiniLM-L6-v2 \
+    --format onnx ./models/all-MiniLM-L6-v2
+
+# Option B: download an existing ONNX snapshot from the HF Hub
+git clone https://huggingface.co/Xenova/all-MiniLM-L6-v2 ./models/all-MiniLM-L6-v2
+```
+
+You also need the ONNX Runtime shared library on the machine:
+download a [release](https://github.com/microsoft/onnxruntime/releases)
+and either put `libonnxruntime.so` on the library path or pass its path via
+`ONNXLibPath` / `ORT_SHARED_LIBRARY_PATH` handling in the adapter.
+
+**Configure**:
+
+```go
+encoder.NewEncoder(encoder.Config{
+    Provider: "huggingface",
+    ModelDir: "./models/all-MiniLM-L6-v2", // model.onnx + vocab.txt live here
+    Model:    "sentence-transformers/all-MiniLM-L6-v2", // registry label
+})
+// ModelDir falls back to HF_MODEL_DIR when unset.
+```
+
+The adapter (`internal/adapter/encoder/hf/`) validates the model directory
+and loads the ONNX session **at construction** — a bad path or corrupt
+model fails fast at startup, not at first encode. `New` returns an error
+for: missing `ModelDir`, missing `model.onnx`, missing/empty `vocab.txt`,
+or a session that won't load. Each `Encoder` serves exactly one local
+model, so `ListModels` returns that single model as the active registry
+row. Errors are prefixed `hf: onnx: ...`.
+
+Common models (export each to ONNX as above):
+
+| Model | Dims | Notes |
+|---|---|---|
+| `sentence-transformers/all-MiniLM-L6-v2` | 384 | default; fast, strong for English |
+| `sentence-transformers/all-mpnet-base-v2` | 768 | higher quality; slower |
+| `BAAI/bge-small-en-v1.5` | 384 | same model as the Ollama default |
+| `BAAI/bge-base-en-v1.5` | 768 | matches the `vec_768` typed column |
+| `BAAI/bge-large-en-v1.5` | 1024 | top quality at this size |
+| `BAAI/bge-m3` | 1024 | multilingual, long context (8192) |
+| `intfloat/multilingual-e5-large` | 1024 | strong multilingual baseline |
+
+Note: ONNX exports may expose `token_type_ids` as an extra input — the
+adapter detects it from the model metadata and feeds zeros automatically.
+
+---
+
 ## Comparison
 
 | Provider | Model | Dims | Cost / 1M tokens | Latency | On-prem |
@@ -398,6 +469,8 @@ func (e *Encoder) embed(ctx context.Context, texts []string) ([][]float64, error
 | MLflow (self-host) | all-MiniLM-L6-v2 | 384 | compute | hardware-dependent | ✅ |
 | OpenAI | text-embedding-3-small | 1536 | $0.02 | ~50–150 ms | ❌ |
 | OpenAI | text-embedding-3-large | 3072 | $0.13 | ~80–200 ms | ❌ |
+| **Hugging Face** (ONNX) | all-MiniLM-L6-v2 | 384 | free | ~5–15 ms CPU | ✅ |
+| Hugging Face (ONNX) | all-mpnet-base-v2 | 768 | free | ~20–50 ms CPU | ✅ |
 
 ## Dimension Support in the Schema
 

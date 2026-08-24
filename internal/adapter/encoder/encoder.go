@@ -9,26 +9,32 @@ import (
 	"strings"
 
 	"github.com/phanijapps/mneme/internal/adapter/encoder/bge"
+	"github.com/phanijapps/mneme/internal/adapter/encoder/hf"
 	"github.com/phanijapps/mneme/internal/adapter/encoder/stub"
 	"github.com/phanijapps/mneme/internal/port"
 )
 
 // Providers supported by NewEncoder.
 const (
-	ProviderOllama = "ollama" // BGE-small (or other Ollama embedding models)
-	ProviderStub   = "stub"   // deterministic, offline; tests only
+	ProviderOllama      = "ollama"      // BGE-small (or other Ollama embedding models)
+	ProviderStub        = "stub"        // deterministic, offline; tests only
+	ProviderHuggingFace = "huggingface" // sentence-transformers via ONNX Runtime, local
 )
 
 // Config selects and parameterizes an encoder implementation.
 type Config struct {
-	// Provider names the backend: "ollama" or "stub".
+	// Provider names the backend: "ollama", "huggingface", or "stub".
 	Provider string
 	// BaseURL for HTTP-based providers (Ollama). Falls back to
 	// OLLAMA_BASE_URL, then the provider default.
 	BaseURL string
-	// Model is the embedding model tag. Empty means the provider default
-	// (bge-small-en-v1.5 for Ollama).
+	// Model is the embedding model tag/id. Empty means the provider default
+	// (bge-small-en-v1.5 for Ollama, all-MiniLM-L6-v2 for Hugging Face).
 	Model string
+	// ModelDir points the Hugging Face provider at a local directory with
+	// the ONNX model and tokenizer files (model.onnx, vocab.txt, ...).
+	// Falls back to HF_MODEL_DIR.
+	ModelDir string
 }
 
 // Defaults for the factory.
@@ -50,10 +56,16 @@ func NewEncoder(cfg Config) (port.MemoryEncoder, error) {
 			base = os.Getenv("OLLAMA_BASE_URL")
 		}
 		return bge.New(bge.Config{BaseURL: base, Model: cfg.Model}), nil
+	case ProviderHuggingFace:
+		dir := cfg.ModelDir
+		if dir == "" {
+			dir = os.Getenv("HF_MODEL_DIR")
+		}
+		return hf.New(hf.Config{ModelDir: dir, Model: cfg.Model})
 	case ProviderStub:
 		return stub.New(), nil
 	default:
-		return nil, fmt.Errorf("encoder: unknown provider %q (valid: %s, %s)",
-			cfg.Provider, ProviderOllama, ProviderStub)
+		return nil, fmt.Errorf("encoder: unknown provider %q (valid: %s, %s, %s)",
+			cfg.Provider, ProviderOllama, ProviderHuggingFace, ProviderStub)
 	}
 }
