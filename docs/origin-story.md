@@ -1,6 +1,6 @@
-# How I Was Built — mneme
+# The Origin Story — mneme
 
-> **mneme** is the brainchild of **zbot**, an autonomous AI agent. This document is the full transcript of the conversation that conceived, designed, and built the AI Agent Memory & Recall System — from initial research request to a Go codebase with validated pgvector DDL, REST API contracts, and MCP server contracts.
+> **mneme** is the brainchild of **zbot**, an autonomous AI agent. This document is the full transcript of the conversation that conceived, designed, and built the AI Agent Memory & Recall System — from initial research request to a Go codebase with validated pgvector DDL, REST API contracts, MCP server contracts, and a working BGE-small encoder.
 
 ---
 
@@ -203,6 +203,26 @@ When the user woke up, there was a repo.
 
 ---
 
+### User
+
+> Merge how-it-was-built and how-i-was-built to origin-story.md. Move website link to top. Align icon and name. You didn't use any embedding model. Use bge-small with guide for Bedrock/Vertex/MLflow/Ollama.
+
+### zbot
+
+Three-part request, all delivered:
+
+1. **origin-story.md** — this document. `how-i-was-built.md` is merged in and deleted; the narrative structure, Fun Notes, and timeline all preserved. The full conversation transcript now lives here for transparency.
+2. **README layout** — website link moved to the very top, above the logo; icon and name aligned side by side in a centered block; link to the origin story added in the Documentation table.
+3. **BGE-small encoder** — the `internal/adapter/encoder/` directory had sat as an empty `.gitkeep` stub since Step 3 defined the `MemoryEncoder` port. Now it holds a real implementation:
+   - `internal/adapter/encoder/bge/` — `port.MemoryEncoder` backed by a local Ollama instance running `bge-small-en-v1.5` (384 dims), over plain HTTP — no CGO, no ONNX runtime. `Encode`, `EncodeBatch`, `ListModels` (filtered to embedding-capable models) all implemented; connection errors wrapped as actionable messages.
+   - `internal/adapter/encoder/text/` — the shared heuristics (type classification, entity extraction, token estimation), deliberately deterministic and separate from the embedding backend.
+   - `internal/adapter/encoder/stub/` — a deterministic offline encoder for tests and local dev.
+   - `internal/adapter/encoder/encoder.go` — a factory: `NewEncoder(provider, config)`, switching on `"ollama"` / `"stub"`, extensible per provider.
+   - **19 unit tests** across the three packages, all against a mock Ollama HTTP server — no live Ollama needed to run `go test`.
+   - `docs/embedding-guide.md` — how to swap the embedding provider: Bedrock (Titan/Cohere), Vertex AI (text-embedding-004), MLflow endpoints, other Ollama models, OpenAI — with module, adapter file, config, dims, cost, and a comparison table. Including the operational warning: the `embedding_models` table tracks which model produced each vector; switching models means re-embedding or supporting multi-model search.
+
+---
+
 ## Fun Notes
 
 - **The user's grammar was occasionally creative** — "Proedural" instead of "Procedural", "resesearch" instead of "research", "advesarial" instead of "adversarial", "Guildelines" instead of "Guidelines". zbot understood every time, without complaint.
@@ -210,6 +230,7 @@ When the user woke up, there was a repo.
 - **The adversarial review found 22 real issues** — zbot didn't rubber-stamp its own work. Five critical bugs in a model it had proudly presented hours earlier.
 - **The entire project went from "research how AI agents remember" to a validated Go codebase with pgvector DDL in one conversation session.**
 - **mneme is named after the Greek muse of memory** — fitting for a memory system.
+- **The user caught the missing encoder** — days after the build, a single sharp question ("You didn't use any embedding model") exposed the one empty directory in an otherwise complete codebase. Fixed in one session.
 
 ---
 
@@ -221,7 +242,29 @@ When the user woke up, there was a repo.
 4. **pgvector Physical Model** — 17 tables, HNSW/GIN indexes, DDL validated against a live container
 5. **Adversarial Review** — 22 findings, 5 critical fixes
 6. **Finalization** — 7 resolutions applied
-7. **Go Implementation** — scaffold → domain → ports → migrations → repository
+7. **Go Implementation** — scaffold → domain → ports → migrations → repository → services → transports
+8. **Encoder & Polish** — BGE-small via Ollama, embedding swap guide, origin story, README layout
+
+---
+
+## Latest Update
+
+**[2026-08-24] Documentation consolidation + encoder implementation**
+
+The user's request: *merge how-it-was-built and how-i-was-built to origin-story.md, move the website link to the top of the README, align icon and name, and — pointedly — "You didn't use any embedding model. Use bge-small with guide for Bedrock/Vertex/MLflow/Ollama."*
+
+What was done:
+
+- **`docs/origin-story.md`** created (this file); `docs/how-i-was-built.md` deleted. Narrative, Fun Notes, and timeline carried over intact.
+- **README.md** — website link now at the very top, above the logo; logo and `mneme` wordmark side by side in a centered block; GitHub repo link directly below; Origin Story added to the Documentation table; encoder row added to the features table.
+- **BGE-small encoder implemented** via a local Ollama backend:
+  - `internal/adapter/encoder/bge/encoder.go` — the real `port.MemoryEncoder`: `Encode`, `EncodeBatch`, `ListModels` against Ollama's `/api/embed` and `/api/tags`, with graceful connection-error wrapping and embedding-model filtering.
+  - `internal/adapter/encoder/text/heuristics.go` — shared classification/extraction/token-estimation logic, deterministic, provider-agnostic.
+  - `internal/adapter/encoder/stub/encoder.go` — offline deterministic encoder for tests.
+  - `internal/adapter/encoder/encoder.go` — provider factory (`ollama`, `stub`; extensible).
+  - `internal/adapter/encoder/bge/encoder_test.go` and peers — 19 tests against a mock Ollama server; `go build ./...`, `go vet`, and `go test ./internal/adapter/encoder/...` all pass.
+- **`docs/embedding-guide.md`** created — swapping to AWS Bedrock, Google Vertex AI, MLflow, other Ollama models, or OpenAI, with a provider comparison table and the re-embedding caveat.
+- **`log.md`** appended.
 
 ---
 

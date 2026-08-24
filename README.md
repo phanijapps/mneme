@@ -1,6 +1,10 @@
-<p align="center"><img src="docs/assets/mneme-logo.svg" width="128" alt="mneme logo" /></p>
+> 🌐 **GitHub**: https://github.com/phanijapps/mneme · **Website**: https://phanijapps.github.io/mneme
 
-# mneme
+<p align="center">
+  <img src="docs/assets/mneme-logo.svg" width="96" alt="mneme logo" />
+  &nbsp;&nbsp;&nbsp;
+  <span style="font-size: 42px; font-weight: bold;">mneme</span>
+</p>
 
 <!-- Badges -->
 <div align="center">
@@ -35,6 +39,7 @@ A high-performance Go service for storing, retrieving, and sharing AI agent memo
 | 🛡️ **Server-Stamped Provenance** | Unforgeable memory provenance with server-generated timestamps |
 | 📡 **Dual Interface** | REST API (chi) + MCP server (mcp-go) sharing the same service core |
 | 🧪 **TDD with Integration Tests** | testcontainers-go for PostgreSQL integration tests |
+| 🧮 **Pluggable Encoder** | BGE-small-en-v1.5 via Ollama (384 dims), swappable to Bedrock/Vertex/MLflow/OpenAI — see [Embedding Guide](docs/embedding-guide.md) |
 | 🏗️ **Clean Architecture** | Domain → Port → Adapter → Service → Transport layers |
 
 ---
@@ -266,6 +271,8 @@ mneme/
 | [Retrieval & Recall](docs/retrieval-and-recall.md) | 4-way hybrid search, Reciprocal Rank Fusion |
 | [Memory Taxonomy](docs/memory-taxonomy.md) | CoALA framework + production system extensions |
 | [Data Model Review](docs/data-model-review.md) | Adversarial review (22 findings, 5 critical) |
+| [Origin Story](docs/origin-story.md) | 📖 How this project was conceived and built — full conversation transcript |
+| [Embedding Guide](docs/embedding-guide.md) | Swapping embedding providers (Bedrock, Vertex, MLflow, Ollama, OpenAI) |
 | [How It Was Built](docs/HOW_IT_WAS_BUILT.md) | Transparency document on the build process |
 
 ### 🧭 Setup Guides
