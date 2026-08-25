@@ -3,4 +3,4 @@
 # Usage: ./scripts/run-docker.sh [up -d|down|logs -f|build|ps|...]
 set -euo pipefail
 cd "$(dirname "$0")/.."
-exec docker compose "$@"
+exec docker compose -f scripts/docker-compose.yml "$@"

@@ -114,8 +114,8 @@ volumes:
 ```
 
 ```bash
-docker compose up -d        # db boots first (healthcheck), then the API
-docker compose logs -f api
+docker compose -f scripts/docker-compose.yml up -d   # db boots first (healthcheck), then the API
+docker compose -f scripts/docker-compose.yml logs -f api
 ```
 
 ## Swagger UI
