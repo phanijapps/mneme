@@ -14,3 +14,17 @@
 - `internal/viz/embed.go` (embed.FS) + `internal/viz/index.html`: self-contained dashboard — D3 v7 + d3-force-3d + Three.js 0.160 CDN only; 3D force-directed graph (sphere=memory by type, octahedron=session), link colors by relationship, starfield, hover labels/tooltips, click→detail panel, dblclick→expand links, "Recall similar", sidebar stats/filters/search, top-bar connection status + API-key input (Bearer via localStorage), auto-rotate toggle.
 - Verified: `go build ./cmd/mneme-viz`, `go build ./...`, `go vet ./...`, HTML served at `/`, proxy 401/502/auth-header passthrough against a stub API, SIGTERM → "stopped" logged.
 
+## [2026-08-24] chore | Docker files relocated to scripts/docker/, compose paths fixed
+
+- Docker files moved from project root to `scripts/docker/` (Dockerfile, docker-compose.yml, initdb/); `.dockerignore` stays at root (Docker requirement); `deploy/` removed.
+- `scripts/docker/docker-compose.yml`: relative paths rebased to compose dir — `build.context: ../..`, `build.dockerfile: scripts/docker/Dockerfile`, postgres initdb volume `./initdb`.
+- `scripts/run-docker.sh`: now `docker compose -f scripts/docker/docker-compose.yml "$@"`.
+- Verified: `docker compose -f scripts/docker/docker-compose.yml config` validates; resolved paths point at project root context and `scripts/docker/initdb`.
+
+## [2026-08-25] chore | Docker files relocated back to project root, compose paths rebased
+
+- `docker-compose.yml` at project root: build `context: .`, `dockerfile: Dockerfile`; postgres initdb volume `./deploy/initdb`.
+- `scripts/run-docker.sh`: now plain `docker compose "$@"` — script `cd`s to project root first, so the root compose file resolves.
+- Verified: `docker compose config` validates from project root; resolved context and initdb paths point at project root and `deploy/initdb`.
+- Supersedes the 2026-08-24 `scripts/docker/` layout above.
+

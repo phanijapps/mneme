@@ -36,8 +36,6 @@ services:
       - "8080:8080"
     command: ["/out/mneme-api"]
     healthcheck:
-      # GET, not --spider: the chi router registers /health for GET only and
-      # answers HEAD with 405.
       test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/health || exit 1"]
       interval: 5s
       timeout: 3s
