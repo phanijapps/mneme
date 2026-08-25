@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mneme — memory graph</title>
+<style>
+:root {
+  --bg-primary: #0d1117; --bg-secondary: #161b22; --bg-tertiary: #21262d;
+  --bg-card: #1c2128; --text-primary: #e6edf3; --text-secondary: #8b949e;
+  --accent-blue: #58a6ff; --accent-green: #3fb950; --accent-purple: #a371f7;
+  --accent-orange: #d29922; --accent-pink: #db61a2; --border-color: #30363d;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  background: var(--bg-primary); color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  font-size: 14px; line-height: 1.5;
+}
+.mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; }
+
+/* ── Top bar ─────────────────────────────────────────── */
+#topbar {
+  position: fixed; top: 0; left: 0; right: 0; height: 52px; z-index: 100;
+  display: flex; align-items: center; gap: 14px; padding: 0 18px;
+  background: rgba(22, 27, 34, 0.92); backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-color);
+}
+#logo { display: flex; align-items: baseline; gap: 10px; }
+#logo .name { font-size: 18px; font-weight: 600; letter-spacing: 0.5px; }
+#logo .name em { color: var(--accent-blue); font-style: normal; }
+#logo .tag { font-size: 11px; color: var(--text-secondary); }
+#conn { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-secondary); }
+#conn .dot { width: 8px; height: 8px; border-radius: 50%; background: #f85149; transition: background .3s, box-shadow .3s; }
+#conn.ok .dot { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
+#conn.err .dot { background: #f85149; box-shadow: 0 0 8px #f85149; animation: pulse 1.4s infinite; }
+@keyframes pulse { 50% { opacity: 0.4; } }
+#apikey-wrap { display: none; align-items: center; gap: 6px; }
+#apikey-wrap.show { display: flex; }
+#apikey {
+  background: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-primary);
+  border-radius: 6px; padding: 4px 10px; font-size: 12px; width: 220px; outline: none;
+}
+#apikey:focus { border-color: var(--accent-blue); }
+button {
+  background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color);
+  border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; transition: all .15s;
+}
+button:hover { background: var(--bg-card); border-color: var(--accent-blue); }
+button.primary { background: rgba(88,166,255,0.15); border-color: var(--accent-blue); color: var(--accent-blue); }
+.spacer { flex: 1; }
+#spin {
+  width: 14px; height: 14px; border: 2px solid var(--border-color); border-top-color: var(--accent-blue);
+  border-radius: 50%; animation: rot .8s linear infinite; display: none;
+}
+#spin.show { display: block; }
+@keyframes rot { to { transform: rotate(360deg); } }
+
+/* ── Sidebar ─────────────────────────────────────────── */
+#sidebar {
+  position: fixed; top: 52px; left: 0; bottom: 0; width: 280px; z-index: 90;
+  background: var(--bg-secondary); border-right: 1px solid var(--border-color);
+  overflow-y: auto; padding: 16px; transition: transform .25s ease;
+}
+#sidebar.hidden { transform: translateX(-280px); }
+#sidebar-toggle {
+  position: fixed; top: 62px; left: 288px; z-index: 91; padding: 6px 7px; transition: left .25s ease;
+}
+#sidebar-toggle.collapsed { left: 8px; }
+.sec { margin-bottom: 20px; }
+.sec h3 {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary);
+  margin-bottom: 10px; font-weight: 600;
+}
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stat {
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px;
+  padding: 10px 12px; transition: border-color .15s;
+}
+.stat:hover { border-color: var(--accent-blue); }
+.stat .v { font-size: 20px; font-weight: 600; }
+.stat .l { font-size: 11px; color: var(--text-secondary); }
+.stat.blue .v { color: var(--accent-blue); } .stat.green .v { color: var(--accent-green); }
+.stat.purple .v { color: var(--accent-purple); } .stat.orange .v { color: var(--accent-orange); }
+#search {
+  width: 100%; background: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-primary);
+  border-radius: 6px; padding: 7px 10px; font-size: 13px; outline: none; margin-bottom: 10px;
+}
+#search:focus { border-color: var(--accent-blue); }
+.fgrp { display: flex; flex-direction: column; gap: 6px; }
+.frow { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; user-select: none; padding: 2px 4px; border-radius: 4px; }
+.frow:hover { background: var(--bg-tertiary); }
+.frow input { accent-color: var(--accent-blue); cursor: pointer; }
+.swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.frow .cnt { margin-left: auto; font-size: 11px; color: var(--text-secondary); }
+.lrow { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); padding: 2px 4px; }
+.lrow .line { width: 22px; height: 2px; flex-shrink: 0; }
+.lrow .line.dashed { background: repeating-linear-gradient(90deg, #79b8ff 0 4px, transparent 4px 7px); }
+#hint { font-size: 11px; color: var(--text-secondary); line-height: 1.7; border-top: 1px solid var(--border-color); padding-top: 12px; }
+#hint b { color: var(--text-primary); font-weight: 600; }
+
+/* ── Canvas / graph ──────────────────────────────────── */
+#canvas-wrap { position: absolute; inset: 0; top: 52px; left: 280px; transition: left .25s ease; }
+#canvas-wrap.wide { left: 0; }
+#graph { width: 100%; height: 100%; display: block; }
+#loading {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; background: var(--bg-primary); z-index: 10; transition: opacity .4s;
+}
+#loading.done { opacity: 0; pointer-events: none; }
+#loading .ring {
+  width: 42px; height: 42px; border: 3px solid var(--border-color); border-top-color: var(--accent-blue);
+  border-radius: 50%; animation: rot .9s linear infinite;
+}
+#loading .t { color: var(--text-secondary); font-size: 13px; }
+
+/* ── Tooltip ─────────────────────────────────────────── */
+#tooltip {
+  position: fixed; z-index: 200; pointer-events: none; display: none; max-width: 340px;
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px;
+  padding: 10px 12px; font-size: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+#tooltip .tt-type { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; font-weight: 600; }
+#tooltip .tt-body { color: var(--text-secondary); max-height: 90px; overflow: hidden; }
+
+/* ── Detail panel ────────────────────────────────────── */
+#detail {
+  position: fixed; top: 52px; right: 0; bottom: 0; width: 400px; z-index: 95;
+  background: var(--bg-secondary); border-left: 1px solid var(--border-color);
+  transform: translateX(400px); transition: transform .25s ease; overflow-y: auto; padding: 18px;
+}
+#detail.open { transform: translateX(0); }
+#detail .close { position: absolute; top: 12px; right: 12px; }
+.d-badge { display: inline-block; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; padding: 3px 8px; border-radius: 10px; margin-bottom: 10px; }
+.d-id { font-size: 12px; color: var(--text-secondary); word-break: break-all; margin-bottom: 14px; }
+.d-sec { margin-bottom: 16px; }
+.d-sec h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin-bottom: 6px; }
+.d-content {
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px;
+  padding: 12px; font-size: 13px; white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow-y: auto;
+}
+.kv { display: grid; grid-template-columns: 110px 1fr; gap: 4px 10px; font-size: 12px; }
+.kv .k { color: var(--text-secondary); }
+.kv .v { word-break: break-all; }
+.tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag { background: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--accent-blue); font-size: 11px; border-radius: 10px; padding: 2px 8px; }
+.d-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+
+/* ── Toasts ──────────────────────────────────────────── */
+#toasts { position: fixed; bottom: 18px; right: 18px; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  background: var(--bg-card); border: 1px solid var(--border-color); border-left: 3px solid var(--accent-blue);
+  border-radius: 8px; padding: 10px 14px; font-size: 13px; max-width: 380px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5); animation: slidein .25s ease;
+}
+.toast.err { border-left-color: #f85149; }
+@keyframes slidein { from { transform: translateX(30px); opacity: 0; } }
+
+/* scrollbars */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-secondary); }
+::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div id="logo"><span class="name">mne<em>me</em></span><span class="tag">memory · graph</span></div>
+  <div id="conn"><span class="dot"></span><span id="conn-label">connecting…</span></div>
+  <div id="apikey-wrap">
+    <input id="apikey" type="password" placeholder="API key (Bearer token)" />
+    <button class="primary" onclick="saveKey()">Save</button>
+  </div>
+  <div class="spacer"></div>
+  <div id="spin"></div>
+  <button onclick="toggleRotate()" id="rotbtn" title="Toggle auto-rotate">⏸ Rotate</button>
+  <button class="primary" onclick="refresh()">⟳ Refresh</button>
+  <button onclick="toggleSidebar()" id="sb-btn" title="Toggle sidebar">◀ Sidebar</button>
+</div>
+
+<div id="sidebar">
+  <div class="sec">
+    <h3>Stats</h3>
+    <div class="stats">
+      <div class="stat blue"><div class="v" id="st-total">–</div><div class="l">memories</div></div>
+      <div class="stat green"><div class="v" id="st-sessions">–</div><div class="l">sessions</div></div>
+      <div class="stat purple"><div class="v" id="st-links">–</div><div class="l">links</div></div>
+      <div class="stat orange"><div class="v" id="st-spaces">–</div><div class="l">spaces</div></div>
+    </div>
+  </div>
+  <div class="sec">
+    <h3>Filter</h3>
+    <input id="search" type="text" placeholder="Search content, tags…" oninput="applyFilters()" />
+    <div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px;">Memory types</div>
+    <div class="fgrp" id="type-filters"></div>
+    <div style="font-size:11px;color:var(--text-secondary);margin:10px 0 4px;">Sessions</div>
+    <div class="fgrp">
+      <label class="frow"><input type="checkbox" checked onchange="applyFilters()"> <span class="swatch" style="background:#79b8ff"></span> Show sessions</label>
+    </div>
+  </div>
+  <div class="sec">
+    <h3>Legend</h3>
+    <div id="legend-nodes"></div>
+    <div style="font-size:11px;color:var(--text-secondary);margin:8px 0 4px;">Link types</div>
+    <div id="legend-links"></div>
+  </div>
+  <div class="sec">
+    <h3>Controls</h3>
+    <div id="hint">
+      <b>Drag</b> — rotate camera<br>
+      <b>Scroll</b> — zoom<br>
+      <b>Hover</b> — label + tooltip<br>
+      <b>Click</b> — node details<br>
+      <b>Double-click</b> — expand links<br>
+      <b>Right-drag</b> — pan
+    </div>
+  </div>
+</div>
+<button id="sidebar-toggle" class="collapsed" onclick="toggleSidebar()">☰</button>
+
+<div id="canvas-wrap">
+  <div id="loading"><div class="ring"></div><div class="t" id="loading-t">loading memories…</div></div>
+  <canvas id="graph"></canvas>
+</div>
+
+<div id="tooltip"></div>
+
+<div id="detail">
+  <button class="close" onclick="closeDetail()">✕</button>
+  <div id="detail-body"></div>
+</div>
+
+<div id="toasts"></div>
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://unpkg.com/d3-force-3d/dist/d3-force-3d.v3.min.js"></script>
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script>
+'use strict';
+
+// ── palette / constants ────────────────────────────────────────────────
+const TYPE_COLORS = { semantic:'#58a6ff', episodic:'#3fb950', procedural:'#a371f7', reference:'#d29922', working:'#db61a2' };
+const SESSION_COLOR = '#79b8ff';
+const LINK_COLORS = { causal:'#58a6ff', causal_next:'#58a6ff', temporal:'#3fb950', similarity:'#a371f7', similar_to:'#a371f7',
+                      derivation:'#d29922', derived_from:'#d29922', supersedes:'#db61a2', co_occurs_with:'#8b949e', anchors_entity:'#a371f7' };
+const REL_LABELS = { causal:'causal', causal_next:'causal', temporal:'temporal', similarity:'similarity', similar_to:'similarity',
+                     derivation:'derivation', derived_from:'derivation', supersedes:'supersedes', co_occurs_with:'co-occurs', anchors_entity:'anchors' };
+const linkColor = r => LINK_COLORS[r] || '#8b949e';
+
+// ── state ──────────────────────────────────────────────────────────────
+let nodes = [];            // {id, kind:'memory'|'session', type, content, tags, session_id, ...}
+let links = [];            // {source, target, rel, kind:'link'|'activation'}
+const nodeById = new Map();
+const linkSet = new Set();
+let expanded = new Set();  // memory ids whose /links we already fetched
+let sim = null, ticks = 0;
+let apiKey = localStorage.getItem('mneme_api_key') || '';
+
+// ── API helpers ────────────────────────────────────────────────────────
+async function api(path) {
+  const headers = { 'Accept': 'application/json' };
+  if (apiKey) headers['Authorization'] = 'Bearer ' + apiKey;
+  const res = await fetch('/api/v1' + path, { headers });
+  if (res.status === 401) { showKeyInput(); throw new Error('401 unauthorized'); }
+  if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
+  return res.json();
+}
+function showKeyInput() {
+  document.getElementById('apikey-wrap').classList.add('show');
+  setConn('unauthorized — enter API key', 'err');
+}
+function saveKey() {
+  apiKey = document.getElementById('apikey').value.trim();
+  localStorage.setItem('mneme_api_key', apiKey);
+  toast('API key saved');
+  refresh();
+}
+
+function setConn(text, cls) {
+  const c = document.getElementById('conn');
+  document.getElementById('conn-label').textContent = text;
+  c.className = cls || '';
+}
+function toast(msg, err) {
+  const d = document.createElement('div');
+  d.className = 'toast' + (err ? ' err' : '');
+  d.textContent = msg;
+  document.getElementById('toasts').appendChild(d);
+  setTimeout(() => d.remove(), 4200);
+}
+function spin(on) { document.getElementById('spin').classList.toggle('show', on); }
+function loadingMsg(t) { document.getElementById('loading-t').textContent = t; }
+
+// ── data loading ───────────────────────────────────────────────────────
+async function fetchAll() {
+  spin(true);
+  try {
+    loadingMsg('loading memories…');
+    const page = await api('/memories?limit=100');
+    setConn('connected', 'ok');
+    const items = page.items || page.memories || [];
+    const known = new Set(items.map(m => m.id));
+    nodes = []; nodeById.clear();
+    for (const m of items) addNode(m);
+
+    loadingMsg('deriving sessions…');
+    const sessions = new Map();
+    for (const m of items) if (m.session_id) {
+      if (!sessions.has(m.session_id)) {
+        sessions.set(m.session_id, { count: 0, created: m.created_at });
+        addNode({ id: m.session_id, kind: 'session', created_at: m.created_at });
+      }
+      sessions.get(m.session_id).count++;
+      addLink({ source: m.session_id, target: m.id, rel: 'activation', kind: 'activation' });
+    }
+
+    loadingMsg('loading links…');
+    let done = 0;
+    await Promise.all(items.map(async m => {
+      try {
+        const lp = await api('/memories/' + m.id + '/links?limit=50');
+        expanded.add(m.id);
+        const litems = lp.items || lp.links || [];
+        for (const l of litems) {
+          const other = l.source_id === m.id ? l.target_id : l.source_id;
+          if (!nodeById.has(other)) {
+            try { const mm = await api('/memories/' + other); addNode(mm); } catch (e) { /* gone */ }
+          }
+          if (nodeById.has(other)) addLink({ source: m.id, target: other, rel: l.relationship_type, kind: 'link' });
+        }
+      } catch (e) { /* links endpoint may 404 */ }
+      done++;
+      if (done % 10 === 0) loadingMsg('loading links… ' + done + '/' + items.length);
+    }));
+
+    loadingMsg('loading stats…');
+    try {
+      const s = await api('/lifecycle/stats');
+      document.getElementById('st-total').textContent = s.counts?.total ?? items.length;
+      document.getElementById('st-links').textContent = s.links?.total ?? links.length;
+      document.getElementById('st-spaces').textContent = s.spaces?.total ?? '–';
+    } catch (e) { document.getElementById('st-total').textContent = items.length; }
+    document.getElementById('st-sessions').textContent = sessions.size;
+
+    buildFilters(items, sessions);
+    buildLegend();
+    rebuildGraph();
+    document.getElementById('loading').classList.add('done');
+    toast('Loaded ' + items.length + ' memories, ' + sessions.size + ' sessions');
+  } catch (e) {
+    setConn('API unreachable', 'err');
+    toast('API error: ' + e.message, true);
+    document.getElementById('loading').classList.add('done');
+  } finally { spin(false); }
+}
+
+function addNode(m) {
+  if (nodeById.has(m.id)) return nodeById.get(m.id);
+  const n = { ...m, kind: m.kind || 'memory' };
+  nodes.push(n); nodeById.set(m.id, n);
+  return n;
+}
+function addLink(l) {
+  const key = [l.source, l.target].sort().join('→') + '|' + l.rel;
+  if (linkSet.has(key)) return;
+  linkSet.add(key);
+  links.push(l);
+}
+
+function refresh() {
+  expanded = new Set();
+  document.getElementById('loading').classList.remove('done');
+  fetchAll();
+}
+
+// ── filters ────────────────────────────────────────────────────────────
+const typeState = {}; // type -> bool
+function buildFilters(items, sessions) {
+  const counts = {};
+  for (const m of items) counts[m.type] = (counts[m.type] || 0) + 1;
+  const box = document.getElementById('type-filters');
+  box.innerHTML = '';
+  for (const t of Object.keys(TYPE_COLORS)) {
+    typeState[t] = t in counts ? (typeState[t] ?? true) : false;
+    const row = document.createElement('label');
+    row.className = 'frow';
+    row.innerHTML = `<input type="checkbox" ${typeState[t] ? 'checked' : ''} onchange="typeState['${t}']=this.checked;applyFilters()">` +
+      `<span class="swatch" style="background:${TYPE_COLORS[t]}"></span> ${t} <span class="cnt">${counts[t] || 0}</span>`;
+    box.appendChild(row);
+  }
+}
+function buildLegend() {
+  const ln = document.getElementById('legend-nodes');
+  ln.innerHTML = Object.entries(TYPE_COLORS).map(([t, c]) =>
+    `<div class="lrow"><span class="swatch" style="background:${c}"></span> ${t} memory</div>`).join('') +
+    `<div class="lrow"><span class="swatch" style="background:${SESSION_COLOR};border-radius:2px;transform:rotate(45deg)"></span> session</div>`;
+  const ll = document.getElementById('legend-links');
+  ll.innerHTML = [...new Map(Object.entries(REL_LABELS).map(([k, v]) => [v, k])).entries()].map(([label, rel]) =>
+    `<div class="lrow"><span class="line" style="background:${linkColor(rel)}"></span> ${label}</div>`).join('') +
+    `<div class="lrow"><span class="line dashed"></span> session activation</div>`;
+}
+function applyFilters() {
+  if (!sim) return;
+  const q = document.getElementById('search').value.toLowerCase();
+  const sessionsOn = document.querySelectorAll('#sidebar .fgrp')[1]?.querySelector('input')?.checked ?? true;
+  for (const n of nodes) {
+    n.visible = true;
+    if (n.kind === 'memory') {
+      if (!typeState[n.type]) n.visible = false;
+      if (q && !((n.content || '').toLowerCase().includes(q) || (n.tags || []).some(t => t.toLowerCase().includes(q)))) n.visible = false;
+    } else {
+      if (!sessionsOn) n.visible = false;
+    }
+  }
+  updateVisibility();
+}
+
+// ── three.js scene ─────────────────────────────────────────────────────
+let renderer, scene, camera, raycaster, starfield, autoRotate = true;
+let nodeMeshes = [], lineSegments, linePositions, lineColors;
+let hovered = null, selectedId = null, lastInteraction = 0;
+let dragNode = null, dragOffset = new THREE.Vector3(), plane = new THREE.Plane();
+const pointer = new THREE.Vector2();
+const canvas = document.getElementById('graph');
+
+function initScene() {
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x0d1117, 0.0018);
+  camera = new THREE.PerspectiveCamera(60, 1, 0.1, 5000);
+  camera.position.set(0, 80, 420);
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer.setClearColor(0x0d1117);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const dir = new THREE.DirectionalLight(0x58a6ff, 1.1); dir.position.set(1, 1, 0.6); scene.add(dir);
+  const dir2 = new THREE.DirectionalLight(0xa371f7, 0.5); dir2.position.set(-1, -0.4, -0.5); scene.add(dir2);
+
+  // starfield for depth
+  const starGeo = new THREE.BufferGeometry();
+  const starPos = new Float32Array(2000 * 3);
+  for (let i = 0; i < 2000; i++) {
+    const r = 900 + Math.random() * 1400, th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1);
+    starPos[i*3] = r * Math.sin(ph) * Math.cos(th);
+    starPos[i*3+1] = r * Math.sin(ph) * Math.sin(th);
+    starPos[i*3+2] = r * Math.cos(ph);
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+  starfield = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x8b949e, size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0.7 }));
+  scene.add(starfield);
+
+  raycaster = new THREE.Raycaster();
+
+  // line buffers
+  linePositions = new Float32Array(30000 * 6);
+  lineColors = new Float32Array(30000 * 6);
+  const lg = new THREE.BufferGeometry();
+  lg.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
+  lg.setAttribute('color', new THREE.BufferAttribute(lineColors, 3));
+  lineSegments = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.35 }));
+  scene.add(lineSegments);
+
+  onResize();
+  window.addEventListener('resize', onResize);
+  bindPointer();
+  requestAnimationFrame(animate);
+}
+
+function onResize() {
+  const w = canvas.clientWidth || window.innerWidth, h = canvas.clientHeight || window.innerHeight - 52;
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  renderer.setSize(w, h, false);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+}
+
+// minimal orbit controls (no external addon)
+let sph = { theta: Math.atan2(camera.position.x, camera.position.z), phi: Math.acos(camera.position.y / camera.position.length()), r: camera.position.length() };
+let dragging = false, panning = false, panStart = null, lastX = 0, lastY = 0, downAt = null, moved = false;
+
+function updateCamFromSph() {
+  const { theta, phi, r } = sph;
+  camera.position.set(r * Math.sin(phi) * Math.sin(theta), r * Math.cos(phi), r * Math.sin(phi) * Math.cos(theta));
+  camera.lookAt(0, 0, 0);
+}
+function bindPointer() {
+  canvas.addEventListener('pointerdown', e => {
+    lastInteraction = performance.now();
+    downAt = { x: e.clientX, y: e.clientY, t: performance.now() }; moved = false;
+    // node drag?
+    const hit = pick(e);
+    if (hit) {
+      dragNode = hit;
+      plane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()).negate(), hit.mesh.position);
+      dragOffset.copy(hit.mesh.position).sub(pointerToWorld(e));
+      canvas.setPointerCapture(e.pointerId);
+    } else if (e.button === 2) panning = true;
+    else dragging = true;
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  canvas.addEventListener('pointermove', e => {
+    lastInteraction = performance.now();
+    if (downAt && (Math.abs(e.clientX - downAt.x) > 4 || Math.abs(e.clientY - downAt.y) > 4)) moved = true;
+    if (dragNode) {
+      const w = pointerToWorld(e);
+      if (w) { dragNode.mesh.position.add(w.add(dragOffset).sub(dragNode.mesh.position)); dragNode.node.x = dragNode.mesh.position.x; dragNode.node.y = dragNode.mesh.position.y; dragNode.node.z = dragNode.mesh.position.z; sim.alphaTarget(0.3).restart(); }
+    } else if (dragging) {
+      sph.theta -= (e.clientX - lastX) * 0.005;
+      sph.phi = Math.min(Math.PI - 0.05, Math.max(0.05, sph.phi - (e.clientY - lastY) * 0.005));
+      updateCamFromSph();
+    } else if (panning) {
+      const dx = (e.clientX - lastX) / sph.r * 200, dy = (e.clientY - lastY) / sph.r * 200;
+      const right = new THREE.Vector3().crossVectors(camera.up, camera.getWorldDirection(new THREE.Vector3())).normalize();
+      camera.position.addScaledVector(right, dx); camera.position.y += dy;
+      sph.r = camera.position.length();
+      sph.theta = Math.atan2(camera.position.x, camera.position.z);
+      sph.phi = Math.acos(camera.position.y / sph.r);
+      camera.lookAt(0, 0, 0);
+    } else {
+      hover(e);
+    }
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  canvas.addEventListener('pointerup', e => {
+    lastInteraction = performance.now();
+    if (dragNode) { sim.alphaTarget(0); dragNode = null; }
+    dragging = panning = false;
+    if (downAt && !moved) {
+      const hit = pick(e);
+      if (hit) selectNode(hit.node);
+      else closeDetail();
+    }
+    downAt = null;
+  });
+  canvas.addEventListener('dblclick', e => { const hit = pick(e); if (hit) expandNode(hit.node); });
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault(); lastInteraction = performance.now();
+    sph.r = Math.min(3000, Math.max(60, sph.r * (1 + e.deltaY * 0.001)));
+    updateCamFromSph();
+  }, { passive: false });
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+}
+function pointerToWorld(e) {
+  const rect = canvas.getBoundingClientRect();
+  pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const p = new THREE.Vector3();
+  return raycaster.ray.intersectPlane(plane, p) ? p : null;
+}
+function pick(e) {
+  const rect = canvas.getBoundingClientRect();
+  pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  raycaster.params.Points.threshold = 0;
+  const visible = nodeMeshes.filter(m => m.visible);
+  const hits = raycaster.intersectObjects(visible.map(v => v.mesh), false);
+  if (hits.length) return nodeMeshes.find(v => v.mesh === hits[0].object);
+  return null;
+}
+
+// hover label: a canvas sprite
+let hoverSprite = null;
+function makeLabel(text, color) {
+  const c = document.createElement('canvas');
+  const ctx = c.getContext('2d');
+  ctx.font = '600 26px system-ui, sans-serif';
+  const w = ctx.measureText(text).width;
+  c.width = Math.ceil(w + 40); c.height = 56;
+  ctx.font = '600 26px system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(28,33,40,0.95)';
+  ctx.beginPath(); ctx.roundRect(0, 0, c.width, c.height, 10); ctx.fill();
+  ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#e6edf3';
+  ctx.fillText(text, 20, 37);
+  const tex = new THREE.CanvasTexture(c);
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+  const s = new THREE.Sprite(mat);
+  s.scale.set(c.width / 8, c.height / 8, 1);
+  return s;
+}
+function hover(e) {
+  const hit = pick(e);
+  const tt = document.getElementById('tooltip');
+  if (hovered && hovered !== hit?.node) { scene.remove(hoverSprite); hoverSprite = null; hovered = null; }
+  if (hit) {
+    hovered = hit.node;
+    if (!hoverSprite) {
+      const label = hit.node.kind === 'session' ? 'session ' + hit.node.id.slice(0, 8)
+        : (hit.node.content || '').slice(0, 28);
+      hoverSprite = makeLabel(label, hit.node.kind === 'session' ? SESSION_COLOR : TYPE_COLORS[hit.node.type] || '#8b949e');
+      scene.add(hoverSprite);
+    }
+    hoverSprite.position.copy(hit.mesh.position).add(new THREE.Vector3(0, hit.node.r + 6, 0));
+    tt.style.display = 'block';
+    tt.style.left = Math.min(e.clientX + 14, window.innerWidth - 360) + 'px';
+    tt.style.top = (e.clientY + 14) + 'px';
+    const color = hit.node.kind === 'session' ? SESSION_COLOR : TYPE_COLORS[hit.node.type] || '#8b949e';
+    tt.innerHTML = `<div class="tt-type" style="color:${color}">${hit.node.kind === 'session' ? 'session' : hit.node.type + ' memory'} · ${degree(hit.node.id)} links</div>` +
+      `<div class="tt-body">${esc(hit.node.kind === 'session' ? 'provenance session (' + sessionCount(hit.node.id) + ' memories)' : (hit.node.content || '').slice(0, 180))}</div>`;
+    canvas.style.cursor = 'pointer';
+  } else {
+    tt.style.display = 'none';
+    canvas.style.cursor = 'grab';
+  }
+}
+function degree(id) { let d = 0; for (const l of links) { if (l.source === id || l.target === id || l.source?.id === id || l.target?.id === id) d++; } return d; }
+function sessionCount(id) { return links.filter(l => l.kind === 'activation' && (l.source === id || l.source?.id === id)).length; }
+function esc(s) { return (s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+// ── graph build ────────────────────────────────────────────────────────
+function rebuildGraph() {
+  for (const v of nodeMeshes) { scene.remove(v.mesh); v.mesh.geometry.dispose(); v.mesh.material.dispose(); if (v.mesh.userData.outline) scene.remove(v.mesh.userData.outline); }
+  nodeMeshes = [];
+
+  const force = (typeof d3Force3d !== 'undefined' && d3Force3d.forceSimulation) ? d3Force3d : d3;
+  sim = force.forceSimulation(nodes)
+    .force('link', force.forceLink(links).id(d => d.id).distance(l => l.kind === 'activation' ? 120 : 70).strength(l => l.kind === 'activation' ? 0.15 : 0.5))
+    .force('charge', force.forceManyBody().strength(-160))
+    .force('center', force.forceCenter ? force.forceCenter() : null)
+    .force('collide', force.forceCollide ? force.forceCollide(14) : null)
+    .stop();
+
+  for (const n of nodes) {
+    const deg = degree(n.id);
+    n.r = n.kind === 'session' ? 9 : 5 + Math.min(7, Math.sqrt(deg) * 2);
+    const color = n.kind === 'session' ? SESSION_COLOR : (TYPE_COLORS[n.type] || '#8b949e');
+    const geo = n.kind === 'session' ? new THREE.OctahedronGeometry(n.r) : new THREE.SphereGeometry(n.r, 20, 16);
+    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.25, emissive: new THREE.Color(color).multiplyScalar(0.12) });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(n.x || (Math.random() - 0.5) * 300, n.y || (Math.random() - 0.5) * 300, n.z || (Math.random() - 0.5) * 300);
+    scene.add(mesh);
+    nodeMeshes.push({ node: n, mesh, visible: true });
+    n.x = mesh.position.x; n.y = mesh.position.y; n.z = mesh.position.z;
+  }
+
+  sim.on('tick', () => { ticks++; }).restart();
+  applyFilters();
+}
+
+function updateVisibility() {
+  for (const v of nodeMeshes) {
+    const n = v.node;
+    v.visible = !!n.visible;
+    v.mesh.visible = v.visible;
+  }
+  updateLines();
+}
+
+const tmpColor = new THREE.Color();
+function updateLines() {
+  let i = 0;
+  const pos = lineSegments.geometry.attributes.position.array;
+  const col = lineSegments.geometry.attributes.color.array;
+  const count = Math.min(links.length, 30000);
+  for (let k = 0; k < count && i < 30000; k++) {
+    const l = links[k];
+    const s = typeof l.source === 'object' ? l.source : nodeById.get(l.source);
+    const t = typeof l.target === 'object' ? l.target : nodeById.get(l.target);
+    if (!s || !t || s.visible === false || t.visible === false) continue;
+    const sm = nodeMeshes.find(v => v.node === s), tm = nodeMeshes.find(v => v.node === t);
+    if (!sm || !tm || !sm.visible || !tm.visible) continue;
+    pos[i*6] = sm.mesh.position.x; pos[i*6+1] = sm.mesh.position.y; pos[i*6+2] = sm.mesh.position.z;
+    pos[i*6+3] = tm.mesh.position.x; pos[i*6+4] = tm.mesh.position.y; pos[i*6+5] = tm.mesh.position.z;
+    const c = l.kind === 'activation' ? '#79b8ff' : linkColor(l.rel);
+    tmpColor.set(c);
+    col[i*6] = col[i*6+3] = tmpColor.r; col[i*6+1] = col[i*6+4] = tmpColor.g; col[i*6+2] = col[i*6+5] = tmpColor.b;
+    i++;
+  }
+  lineSegments.geometry.setDrawRange(0, i * 2);
+  lineSegments.geometry.attributes.position.needsUpdate = true;
+  lineSegments.geometry.attributes.color.needsUpdate = true;
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  const idle = performance.now() - lastInteraction > 6000;
+  if (autoRotate && idle) { sph.theta += 0.0012; updateCamFromSph(); }
+  // simulation runs on its own d3 timer; positions are mirrored every frame
+  for (const v of nodeMeshes) {
+    if (v.node.fx != null || dragNode?.node === v.node) continue;
+    v.mesh.position.set(v.node.x || 0, v.node.y || 0, v.node.z || 0);
+  }
+  if (hovered && hoverSprite) {
+    const v = nodeMeshes.find(v => v.node === hovered);
+    if (v) hoverSprite.position.copy(v.mesh.position).add(new THREE.Vector3(0, v.node.r + 6, 0));
+  }
+  if (selectedId) {
+    const v = nodeMeshes.find(v => v.node.id === selectedId);
+    if (v) v.mesh.rotation.y += 0.03;
+  }
+  updateLines();
+  renderer.render(scene, camera);
+}
+
+// ── detail panel ───────────────────────────────────────────────────────
+function selectNode(n) {
+  selectedId = n.id;
+  const body = document.getElementById('detail-body');
+  const color = n.kind === 'session' ? SESSION_COLOR : TYPE_COLORS[n.type] || '#8b949e';
+  if (n.kind === 'session') {
+    body.innerHTML = `
+      <span class="d-badge" style="color:${color};border:1px solid ${color}">session</span>
+      <div class="d-id mono">${n.id}</div>
+      <div class="d-sec"><h4>Memories</h4><div class="kv"><span class="k">activated</span><span class="v">${sessionCount(n.id)} memories</span></div></div>
+      <div class="d-sec"><h4>Timeline</h4><div class="kv">
+        <span class="k">first memory</span><span class="v">${fmt(n.created_at)}</span>
+      </div></div>
+      <div class="d-actions">
+        <button onclick="expandNode(nodeById.get('${n.id}'))">Expand links</button>
+        <button onclick="window.open('/api/v1/sessions/${n.id}','_blank')">View in API</button>
+      </div>`;
+  } else {
+    body.innerHTML = `
+      <span class="d-badge" style="color:${color};border:1px solid ${color}">${n.type} memory</span>
+      <div class="d-id mono">${n.id}</div>
+      <div class="d-sec"><h4>Content</h4><div class="d-content">${esc(n.content)}</div></div>
+      ${n.tags?.length ? `<div class="d-sec"><h4>Tags</h4><div class="tags">${n.tags.map(t => `<span class="tag mono">${esc(t)}</span>`).join('')}</div></div>` : ''}
+      <div class="d-sec"><h4>Properties</h4><div class="kv">
+        <span class="k">links</span><span class="v">${degree(n.id)}</span>
+        <span class="k">origin</span><span class="v">${esc(n.origin || '–')}</span>
+        <span class="k">confidence</span><span class="v">${n.confidence != null ? n.confidence.toFixed(2) : '–'}</span>
+        <span class="k">decay</span><span class="v">${n.decay_score != null ? n.decay_score.toFixed(3) : '–'}</span>
+        <span class="k">scope</span><span class="v">${esc(n.access_scope || '–')}</span>
+        <span class="k">version</span><span class="v">${n.version ?? '–'}</span>
+        <span class="k">model</span><span class="v mono">${esc(n.embedding_model || '–')}</span>
+        ${n.session_id ? `<span class="k">session</span><span class="v mono">${n.session_id}</span>` : ''}
+        ${n.source_ref ? `<span class="k">source</span><span class="v mono">${esc(n.source_ref.kind || '')} ${esc(n.source_ref.path || n.source_ref.uri || '')}</span>` : ''}
+      </div></div>
+      <div class="d-sec"><h4>Timestamps</h4><div class="kv">
+        <span class="k">created</span><span class="v">${fmt(n.created_at)}</span>
+        <span class="k">updated</span><span class="v">${fmt(n.updated_at)}</span>
+      </div></div>
+      <div class="d-actions">
+        <button class="primary" onclick="expandNode(nodeById.get('${n.id}'))">⊕ Expand links</button>
+        <button onclick="recallSimilar('${n.id}')">Recall similar</button>
+        <button onclick="window.open('/api/v1/memories/${n.id}','_blank')">View in API</button>
+      </div>`;
+  }
+  document.getElementById('detail').classList.add('open');
+}
+function fmt(ts) { return ts ? new Date(ts).toLocaleString() : '–'; }
+function closeDetail() { document.getElementById('detail').classList.remove('open'); selectedId = null; }
+
+async function expandNode(n) {
+  if (!n) return;
+  spin(true);
+  try {
+    const lp = await api('/memories/' + n.id + '/links?limit=50');
+    const litems = lp.items || lp.links || [];
+    let added = 0;
+    for (const l of litems) {
+      const other = l.source_id === n.id ? l.target_id : l.source_id;
+      if (!nodeById.has(other)) {
+        try { const mm = await api('/memories/' + other); addNode(mm); added++; } catch (e) {}
+      }
+      if (nodeById.has(other) && addLink({ source: n.id, target: other, rel: l.relationship_type, kind: 'link' })) added++;
+    }
+    if (added) { rebuildGraph(); toast('Expanded +' + added + ' from ' + n.id.slice(0, 8)); }
+    else toast('No new links found');
+  } catch (e) { toast('Expand failed: ' + e.message, true); }
+  finally { spin(false); }
+}
+async function recallSimilar(id) {
+  spin(true);
+  try {
+    const m = nodeById.get(id);
+    const res = await fetch('/api/v1/recall', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(apiKey ? { 'Authorization': 'Bearer ' + apiKey } : {}) },
+      body: JSON.stringify({ query: (m?.content || '').slice(0, 500), top_k: 5, strategy: 'hybrid' })
+    }).then(r => r.json());
+    const items = res.items || res.candidates || [];
+    let added = 0;
+    for (const c of items) {
+      const cid = c.memory_id || c.id;
+      if (cid && cid !== id && !nodeById.has(cid)) {
+        try { const mm = await api('/memories/' + cid); addNode(mm); } catch (e) {}
+      }
+      if (cid && nodeById.has(cid) && addLink({ source: id, target: cid, rel: 'similarity', kind: 'link' })) added++;
+    }
+    if (added) { rebuildGraph(); toast('Recall: +' + added + ' similar memories'); }
+    else toast('Recall returned ' + items.length + ' candidates (all already shown)');
+  } catch (e) { toast('Recall failed: ' + e.message, true); }
+  finally { spin(false); }
+}
+
+// ── ui toggles ─────────────────────────────────────────────────────────
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const cw = document.getElementById('canvas-wrap');
+  const tg = document.getElementById('sidebar-toggle');
+  const btn = document.getElementById('sb-btn');
+  sb.classList.toggle('hidden');
+  cw.classList.toggle('wide', sb.classList.contains('hidden'));
+  tg.classList.toggle('collapsed', sb.classList.contains('hidden'));
+  btn.textContent = sb.classList.contains('hidden') ? '☰ Sidebar' : '◀ Sidebar';
+  setTimeout(onResize, 260);
+}
+function toggleRotate() {
+  autoRotate = !autoRotate;
+  document.getElementById('rotbtn').textContent = autoRotate ? '⏸ Rotate' : '▶ Rotate';
+}
+
+// ── boot ───────────────────────────────────────────────────────────────
+initScene();
+if (apiKey) document.getElementById('apikey').value = apiKey;
+fetchAll();
+</script>
+</body>
+</html>
