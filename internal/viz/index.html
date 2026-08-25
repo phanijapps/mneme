@@ -6,10 +6,11 @@
 <title>mneme — memory graph</title>
 <style>
 :root {
-  --bg-primary: #0d1117; --bg-secondary: #161b22; --bg-tertiary: #21262d;
-  --bg-card: #1c2128; --text-primary: #e6edf3; --text-secondary: #8b949e;
-  --accent-blue: #58a6ff; --accent-green: #3fb950; --accent-purple: #a371f7;
-  --accent-orange: #d29922; --accent-pink: #db61a2; --border-color: #30363d;
+  --bg-primary: #ffffff; --bg-secondary: #f6f8fa; --bg-tertiary: #e1e4e8;
+  --bg-card: #ffffff; --text-primary: #1f2328; --text-secondary: #656d76;
+  --accent-blue: #0969da; --accent-green: #1a7f37; --accent-purple: #8250df;
+  --accent-orange: #bf8700; --accent-pink: #cf222e; --border-color: #d0d7de;
+  --shadow-1: 0 1px 3px rgba(0,0,0,0.08); --shadow-2: 0 8px 24px rgba(0,0,0,0.12);
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { height: 100%; overflow: hidden; }
@@ -24,8 +25,8 @@ body {
 #topbar {
   position: fixed; top: 0; left: 0; right: 0; height: 52px; z-index: 100;
   display: flex; align-items: center; gap: 14px; padding: 0 18px;
-  background: rgba(22, 27, 34, 0.92); backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-color); box-shadow: var(--shadow-1);
 }
 #logo { display: flex; align-items: baseline; gap: 10px; }
 #logo .name { font-size: 18px; font-weight: 600; letter-spacing: 0.5px; }
@@ -47,8 +48,8 @@ button {
   background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color);
   border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; transition: all .15s;
 }
-button:hover { background: var(--bg-card); border-color: var(--accent-blue); }
-button.primary { background: rgba(88,166,255,0.15); border-color: var(--accent-blue); color: var(--accent-blue); }
+button:hover { background: var(--bg-primary); border-color: var(--accent-blue); }
+button.primary { background: rgba(9,105,218,0.08); border-color: var(--accent-blue); color: var(--accent-blue); }
 .spacer { flex: 1; }
 #spin {
   width: 14px; height: 14px; border: 2px solid var(--border-color); border-top-color: var(--accent-blue);
@@ -96,7 +97,7 @@ button.primary { background: rgba(88,166,255,0.15); border-color: var(--accent-b
 .frow .cnt { margin-left: auto; font-size: 11px; color: var(--text-secondary); }
 .lrow { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); padding: 2px 4px; }
 .lrow .line { width: 22px; height: 2px; flex-shrink: 0; }
-.lrow .line.dashed { background: repeating-linear-gradient(90deg, #79b8ff 0 4px, transparent 4px 7px); }
+.lrow .line.dashed { background: repeating-linear-gradient(90deg, #54aeff 0 4px, transparent 4px 7px); }
 #hint { font-size: 11px; color: var(--text-secondary); line-height: 1.7; border-top: 1px solid var(--border-color); padding-top: 12px; }
 #hint b { color: var(--text-primary); font-weight: 600; }
 
@@ -119,7 +120,7 @@ button.primary { background: rgba(88,166,255,0.15); border-color: var(--accent-b
 #tooltip {
   position: fixed; z-index: 200; pointer-events: none; display: none; max-width: 340px;
   background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px;
-  padding: 10px 12px; font-size: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  padding: 10px 12px; font-size: 12px; box-shadow: var(--shadow-2);
 }
 #tooltip .tt-type { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; font-weight: 600; }
 #tooltip .tt-body { color: var(--text-secondary); max-height: 90px; overflow: hidden; }
@@ -127,7 +128,8 @@ button.primary { background: rgba(88,166,255,0.15); border-color: var(--accent-b
 /* ── Detail panel ────────────────────────────────────── */
 #detail {
   position: fixed; top: 52px; right: 0; bottom: 0; width: 400px; z-index: 95;
-  background: var(--bg-secondary); border-left: 1px solid var(--border-color);
+  background: var(--bg-card); border-left: 1px solid var(--border-color);
+  box-shadow: -4px 0 12px rgba(0,0,0,0.06);
   transform: translateX(400px); transition: transform .25s ease; overflow-y: auto; padding: 18px;
 }
 #detail.open { transform: translateX(0); }
@@ -137,7 +139,7 @@ button.primary { background: rgba(88,166,255,0.15); border-color: var(--accent-b
 .d-sec { margin-bottom: 16px; }
 .d-sec h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin-bottom: 6px; }
 .d-content {
-  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px;
+  background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px;
   padding: 12px; font-size: 13px; white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow-y: auto;
 }
 .kv { display: grid; grid-template-columns: 110px 1fr; gap: 4px 10px; font-size: 12px; }
@@ -152,7 +154,7 @@ button.primary { background: rgba(88,166,255,0.15); border-color: var(--accent-b
 .toast {
   background: var(--bg-card); border: 1px solid var(--border-color); border-left: 3px solid var(--accent-blue);
   border-radius: 8px; padding: 10px 14px; font-size: 13px; max-width: 380px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5); animation: slidein .25s ease;
+  box-shadow: var(--shadow-2); animation: slidein .25s ease;
 }
 .toast.err { border-left-color: #f85149; }
 @keyframes slidein { from { transform: translateX(30px); opacity: 0; } }
@@ -160,7 +162,8 @@ button.primary { background: rgba(88,166,255,0.15); border-color: var(--accent-b
 /* scrollbars */
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: var(--bg-secondary); }
-::-webkit-scrollbar-thumb { background: var(--bg-tertiary); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: #afb8c1; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #8c959f; }
 </style>
 </head>
 <body>
@@ -196,7 +199,7 @@ button.primary { background: rgba(88,166,255,0.15); border-color: var(--accent-b
     <div class="fgrp" id="type-filters"></div>
     <div style="font-size:11px;color:var(--text-secondary);margin:10px 0 4px;">Sessions</div>
     <div class="fgrp">
-      <label class="frow"><input type="checkbox" checked onchange="applyFilters()"> <span class="swatch" style="background:#79b8ff"></span> Show sessions</label>
+      <label class="frow"><input type="checkbox" checked onchange="applyFilters()"> <span class="swatch" style="background:#54aeff"></span> Show sessions</label>
     </div>
   </div>
   <div class="sec">
@@ -240,13 +243,13 @@ button.primary { background: rgba(88,166,255,0.15); border-color: var(--accent-b
 'use strict';
 
 // ── palette / constants ────────────────────────────────────────────────
-const TYPE_COLORS = { semantic:'#58a6ff', episodic:'#3fb950', procedural:'#a371f7', reference:'#d29922', working:'#db61a2' };
-const SESSION_COLOR = '#79b8ff';
-const LINK_COLORS = { causal:'#58a6ff', causal_next:'#58a6ff', temporal:'#3fb950', similarity:'#a371f7', similar_to:'#a371f7',
-                      derivation:'#d29922', derived_from:'#d29922', supersedes:'#db61a2', co_occurs_with:'#8b949e', anchors_entity:'#a371f7' };
+const TYPE_COLORS = { semantic:'#0969da', episodic:'#1a7f37', procedural:'#8250df', reference:'#bf8700', working:'#cf222e' };
+const SESSION_COLOR = '#54aeff';
+const LINK_COLORS = { causal:'#0969da', causal_next:'#0969da', temporal:'#1a7f37', similarity:'#8250df', similar_to:'#8250df',
+                      derivation:'#bf8700', derived_from:'#bf8700', supersedes:'#cf222e', co_occurs_with:'#656d76', anchors_entity:'#8250df' };
 const REL_LABELS = { causal:'causal', causal_next:'causal', temporal:'temporal', similarity:'similarity', similar_to:'similarity',
                      derivation:'derivation', derived_from:'derivation', supersedes:'supersedes', co_occurs_with:'co-occurs', anchors_entity:'anchors' };
-const linkColor = r => LINK_COLORS[r] || '#8b949e';
+const linkColor = r => LINK_COLORS[r] || '#656d76';
 
 // ── state ──────────────────────────────────────────────────────────────
 let nodes = [];            // {id, kind:'memory'|'session', type, content, tags, session_id, ...}
@@ -426,15 +429,15 @@ const canvas = document.getElementById('graph');
 
 function initScene() {
   scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x0d1117, 0.0018);
+  scene.fog = new THREE.FogExp2(0xffffff, 0.0018);
   camera = new THREE.PerspectiveCamera(60, 1, 0.1, 5000);
   camera.position.set(0, 80, 420);
   renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-  renderer.setClearColor(0x0d1117);
+  renderer.setClearColor(0xffffff);
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-  const dir = new THREE.DirectionalLight(0x58a6ff, 1.1); dir.position.set(1, 1, 0.6); scene.add(dir);
-  const dir2 = new THREE.DirectionalLight(0xa371f7, 0.5); dir2.position.set(-1, -0.4, -0.5); scene.add(dir2);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+  const dir = new THREE.DirectionalLight(0xffffff, 0.7); dir.position.set(1, 1, 0.6); scene.add(dir);
+  const dir2 = new THREE.DirectionalLight(0xd0d7de, 0.3); dir2.position.set(-1, -0.4, -0.5); scene.add(dir2);
 
   // starfield for depth
   const starGeo = new THREE.BufferGeometry();
@@ -446,7 +449,7 @@ function initScene() {
     starPos[i*3+2] = r * Math.cos(ph);
   }
   starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-  starfield = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x8b949e, size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0.7 }));
+  starfield = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xc8d1da, size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0.7 }));
   scene.add(starfield);
 
   raycaster = new THREE.Raycaster();
@@ -457,7 +460,7 @@ function initScene() {
   const lg = new THREE.BufferGeometry();
   lg.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
   lg.setAttribute('color', new THREE.BufferAttribute(lineColors, 3));
-  lineSegments = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.35 }));
+  lineSegments = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.45 }));
   scene.add(lineSegments);
 
   onResize();
@@ -568,10 +571,10 @@ function makeLabel(text, color) {
   const w = ctx.measureText(text).width;
   c.width = Math.ceil(w + 40); c.height = 56;
   ctx.font = '600 26px system-ui, sans-serif';
-  ctx.fillStyle = 'rgba(28,33,40,0.95)';
+  ctx.fillStyle = 'rgba(255,255,255,0.97)';
   ctx.beginPath(); ctx.roundRect(0, 0, c.width, c.height, 10); ctx.fill();
   ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
-  ctx.fillStyle = '#e6edf3';
+  ctx.fillStyle = '#1f2328';
   ctx.fillText(text, 20, 37);
   const tex = new THREE.CanvasTexture(c);
   const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
@@ -588,14 +591,14 @@ function hover(e) {
     if (!hoverSprite) {
       const label = hit.node.kind === 'session' ? 'session ' + hit.node.id.slice(0, 8)
         : (hit.node.content || '').slice(0, 28);
-      hoverSprite = makeLabel(label, hit.node.kind === 'session' ? SESSION_COLOR : TYPE_COLORS[hit.node.type] || '#8b949e');
+      hoverSprite = makeLabel(label, hit.node.kind === 'session' ? SESSION_COLOR : TYPE_COLORS[hit.node.type] || '#656d76');
       scene.add(hoverSprite);
     }
     hoverSprite.position.copy(hit.mesh.position).add(new THREE.Vector3(0, hit.node.r + 6, 0));
     tt.style.display = 'block';
     tt.style.left = Math.min(e.clientX + 14, window.innerWidth - 360) + 'px';
     tt.style.top = (e.clientY + 14) + 'px';
-    const color = hit.node.kind === 'session' ? SESSION_COLOR : TYPE_COLORS[hit.node.type] || '#8b949e';
+    const color = hit.node.kind === 'session' ? SESSION_COLOR : TYPE_COLORS[hit.node.type] || '#656d76';
     tt.innerHTML = `<div class="tt-type" style="color:${color}">${hit.node.kind === 'session' ? 'session' : hit.node.type + ' memory'} · ${degree(hit.node.id)} links</div>` +
       `<div class="tt-body">${esc(hit.node.kind === 'session' ? 'provenance session (' + sessionCount(hit.node.id) + ' memories)' : (hit.node.content || '').slice(0, 180))}</div>`;
     canvas.style.cursor = 'pointer';
@@ -624,7 +627,7 @@ function rebuildGraph() {
   for (const n of nodes) {
     const deg = degree(n.id);
     n.r = n.kind === 'session' ? 9 : 5 + Math.min(7, Math.sqrt(deg) * 2);
-    const color = n.kind === 'session' ? SESSION_COLOR : (TYPE_COLORS[n.type] || '#8b949e');
+    const color = n.kind === 'session' ? SESSION_COLOR : (TYPE_COLORS[n.type] || '#656d76');
     const geo = n.kind === 'session' ? new THREE.OctahedronGeometry(n.r) : new THREE.SphereGeometry(n.r, 20, 16);
     const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.25, emissive: new THREE.Color(color).multiplyScalar(0.12) });
     const mesh = new THREE.Mesh(geo, mat);
@@ -662,7 +665,7 @@ function updateLines() {
     if (!sm || !tm || !sm.visible || !tm.visible) continue;
     pos[i*6] = sm.mesh.position.x; pos[i*6+1] = sm.mesh.position.y; pos[i*6+2] = sm.mesh.position.z;
     pos[i*6+3] = tm.mesh.position.x; pos[i*6+4] = tm.mesh.position.y; pos[i*6+5] = tm.mesh.position.z;
-    const c = l.kind === 'activation' ? '#79b8ff' : linkColor(l.rel);
+    const c = l.kind === 'activation' ? '#54aeff' : linkColor(l.rel);
     tmpColor.set(c);
     col[i*6] = col[i*6+3] = tmpColor.r; col[i*6+1] = col[i*6+4] = tmpColor.g; col[i*6+2] = col[i*6+5] = tmpColor.b;
     i++;
@@ -697,7 +700,7 @@ function animate() {
 function selectNode(n) {
   selectedId = n.id;
   const body = document.getElementById('detail-body');
-  const color = n.kind === 'session' ? SESSION_COLOR : TYPE_COLORS[n.type] || '#8b949e';
+  const color = n.kind === 'session' ? SESSION_COLOR : TYPE_COLORS[n.type] || '#656d76';
   if (n.kind === 'session') {
     body.innerHTML = `
       <span class="d-badge" style="color:${color};border:1px solid ${color}">session</span>
