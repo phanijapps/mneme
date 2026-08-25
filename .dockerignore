@@ -1,0 +1,17 @@
+# VCS
+.git
+.gitignore
+
+# Local binaries
+mneme-api
+mneme-mcp
+mneme-viz
+
+# Test / coverage artifacts
+*.test
+coverage.*
+
+# Scratch and docs (not needed in the build context)
+tmp/
+docs/
+.env*
